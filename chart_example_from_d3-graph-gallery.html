@@ -1,0 +1,120 @@
+<!-- Code from d3-graph-gallery.com -->
+<!DOCTYPE html>
+<meta charset="utf-8" />
+
+<!-- Load d3.js -->
+<script src="https://d3js.org/d3.v4.js"></script>
+<script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+<script src="https://d3js.org/d3-geo-projection.v2.min.js"></script>
+
+<!-- Create an element where the map will take place -->
+<div style="display: flex; gap: 350px;">
+  <button onclick="startTimer()">Start</button>
+  <button onclick="stopTimer()">Pause</button>
+  <div style="font-weight: bold;" id="year"></div>
+</div>
+<svg id="my_dataviz" width="1200" height="600"></svg>
+
+<script>
+  // The svg
+  var svg = d3.select("svg"),
+    width = +svg.attr("width"),
+    height = +svg.attr("height");
+
+  var svgc = null;
+
+  var topo = null;
+  var cYear = 1751;
+  var entireData = {};
+  for (let i = 1751; i < 2018; i++) {
+    entireData[i] = [];
+  }
+
+  let intervalObj = null;
+
+  // Map and projection
+  var path = d3.geoPath();
+  var projection = d3
+    .geoMercator()
+    .scale(100)
+    .center([0, 20])
+    .translate([width / 2, height / 2]);
+
+  // Data and color scale
+  var data = d3.map();
+  var colorScale = d3
+    .scaleThreshold()
+    .domain([0, 99, 9999, 99999, 99999999, 9999999999])
+    .range([
+      "#de8686",
+      "#b55b5b",
+      "#9d3535",
+      "#922323",
+      "#741414",
+      "#480909",
+      "#190101",
+    ]);
+
+  // Load external data and boot
+  d3.queue()
+    .defer(
+      d3.json,
+      "https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson"
+    )
+    .defer(
+      d3.csv,
+      //  "https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world_population.csv",
+      "dataco2.csv",
+      function (d) {
+        entireData[+d.Year].push(d);
+
+        data.set(d.code, +d.pop);
+        data.set("year", +d.Year);
+        //data.set(d.Code, +d["Annual CO2"]);
+      }
+    )
+    .await(ready);
+
+  function ready(error, topo) {
+    topoc = topo;
+    // Draw the map
+
+    svgc = svg
+      .append("g")
+      .selectAll("path")
+      .data(topo.features)
+      .enter()
+      .append("path")
+      // draw each country
+      .attr("d", d3.geoPath().projection(projection))
+      .attr("fill", function (d) {
+        return "#d4cfcf";
+      });
+    // set the color of each country
+  }
+
+  function readyC() {}
+
+  startTimer();
+  function startTimer() {
+    intervalObj = setInterval(function () {
+      document.getElementById("year").textContent = cYear;
+      svgc.attr("fill", function (d) {
+        let countriesData = entireData[cYear];
+        for (let j = 0; j < countriesData.length; j++) {
+          if (countriesData[j].code == d.id) {
+            return colorScale(+countriesData[j].pop);
+          }
+        }
+      });
+      if (cYear == 2017) {
+        clearInterval(intervalObj);
+      }
+      cYear++;
+    }, 250);
+  }
+
+  function stopTimer() {
+    clearInterval(intervalObj);
+  }
+</script>
